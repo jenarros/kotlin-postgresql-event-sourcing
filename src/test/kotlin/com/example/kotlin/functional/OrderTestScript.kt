@@ -3,23 +3,20 @@ package com.example.kotlin.functional
 import com.example.eventsourcing.config.Json
 import com.example.eventsourcing.config.Json.jsonify
 import com.example.eventsourcing.config.Json.objectMapper
-import com.example.eventsourcing.config.Kafka
 import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
 import com.fasterxml.jackson.core.JsonProcessingException
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.common.serialization.IntegerDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.http4k.core.HttpHandler
 import org.http4k.core.Method
 import org.http4k.core.Request
-import org.http4k.format.Jackson.json
 import org.slf4j.LoggerFactory
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory
-import org.springframework.kafka.test.utils.KafkaTestUtils
 import strikt.api.expectThat
 import strikt.assertions.isEqualTo
-import strikt.assertions.isGreaterThanOrEqualTo
 import strikt.assertions.isTrue
 import strikt.jackson.isTextual
 import strikt.jackson.path
@@ -53,8 +50,7 @@ class OrderTestScript(
     fun verifyIntegrationEvents(orderId: UUID, kafkaConsumer: Consumer<String, String>) {
         log.info("Print integration events")
         val kafkaRecordValues = getKafkaRecords(kafkaConsumer, Duration.ofSeconds(30), 23)
-        expectThat(kafkaRecordValues.size)
-            .isGreaterThanOrEqualTo(23)
+
         val lastKafkaRecordValue = kafkaRecordValues[kafkaRecordValues.size - 1]
         expectThat(lastKafkaRecordValue.jsonify()).isEqualTo(
             """
@@ -333,19 +329,23 @@ class OrderTestScript(
     }
 
     fun createKafkaConsumer(topicsToConsume: List<String>): Consumer<String, String> {
-        val consumerProps = KafkaTestUtils.consumerProps(
-            kafkaBrokers,
-            this.javaClass.simpleName + "-consumer",
-            "true"
-        ).also {
-            it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
-        }
-        val cf = DefaultKafkaConsumerFactory(
-            consumerProps,
+        val props: MutableMap<String, Any> = HashMap()
+        props[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafkaBrokers
+        props[ConsumerConfig.GROUP_ID_CONFIG] = this.javaClass.simpleName + "-consumer"
+        props[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = "true"
+        props[ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG] = "10"
+        props[ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG] = "60000"
+        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] =
+            IntegerDeserializer::class.java
+        props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] =
+            StringDeserializer::class.java
+        props[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
+
+        return KafkaConsumer(
+            props,
             StringDeserializer(),
             StringDeserializer()
-        )
-        return cf.createConsumer().also {
+        ).also {
             it.subscribe(topicsToConsume)
         }
     }
@@ -355,7 +355,12 @@ class OrderTestScript(
         timeout: Duration,
         minRecords: Int
     ): List<String> {
-        val records = KafkaTestUtils.getRecords(consumer, timeout, minRecords)
+        val records = mutableListOf<ConsumerRecord<String, String>>()
+
+        do {
+            records.addAll(consumer.poll(timeout).map { it })
+        } while (records.size < minRecords)
+
         return StreamSupport.stream(Spliterators.spliteratorUnknownSize(records.iterator(), Spliterator.ORDERED), false)
             .sorted(Comparator.comparingLong { obj: ConsumerRecord<String, String> -> obj.timestamp() })
             .map { obj: ConsumerRecord<String, String> -> obj.value() }

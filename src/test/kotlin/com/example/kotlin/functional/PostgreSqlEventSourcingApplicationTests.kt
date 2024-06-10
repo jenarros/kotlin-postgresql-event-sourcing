@@ -2,10 +2,7 @@ package com.example.kotlin.functional
 
 import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
 import com.example.kotlin.functional.TestEnvironment.kafka
-import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestMethodOrder
-import java.time.Duration
 import java.util.*
 
 class PostgreSqlEventSourcingApplicationTests {
