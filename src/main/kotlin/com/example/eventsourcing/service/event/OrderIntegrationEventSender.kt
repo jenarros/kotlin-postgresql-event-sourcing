@@ -1,6 +1,5 @@
 package com.example.eventsourcing.service.event
 
-import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
 import com.example.eventsourcing.domain.AggregateType
 import com.example.eventsourcing.domain.OrderAggregate
 import com.example.eventsourcing.domain.event.Event
@@ -9,12 +8,14 @@ import com.example.eventsourcing.dto.OrderDto
 import com.example.eventsourcing.mapper.OrderMapper
 import com.example.eventsourcing.service.AggregateStore
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.LoggerFactory
-import org.springframework.kafka.core.KafkaTemplate
 
 class OrderIntegrationEventSender(
     private val aggregateStore: AggregateStore,
-    private val kafkaTemplate: KafkaTemplate<String, String>,
+    private val kafkaTemplate: KafkaProducer<String, String>,
+    private val kafkaTopic: String,
     private val objectMapper: ObjectMapper
 ) : AsyncEventHandler {
     private val orderMapper = OrderMapper()
@@ -25,15 +26,17 @@ class OrderIntegrationEventSender(
             AggregateType.ORDER, event.aggregateId, event.version
         )
         val orderDto = orderMapper.toDto(event, aggregate as OrderAggregate)
-        sendDataToKafka(orderDto)
+        sendDataToKafka(orderDto, kafkaTopic)
     }
 
-    private fun sendDataToKafka(orderDto: OrderDto) {
+    private fun sendDataToKafka(orderDto: OrderDto, topic: String) {
         log.info("Publishing integration event {}", orderDto)
         kafkaTemplate.send(
-            TOPIC_ORDER_EVENTS,
-            orderDto.orderId.toString(),
-            objectMapper.writeValueAsString(orderDto)
+            ProducerRecord(
+                topic,
+                orderDto.orderId.toString(),
+                objectMapper.writeValueAsString(orderDto)
+            )
         )
     }
 

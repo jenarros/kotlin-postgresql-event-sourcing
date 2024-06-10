@@ -5,7 +5,7 @@ import org.http4k.client.ApacheClient
 import org.http4k.core.Uri
 import org.http4k.core.then
 import org.http4k.filter.ClientFilters
-import org.junit.jupiter.api.Test
+import org.junit.Test
 
 /*
  * Requires having the docker apps running

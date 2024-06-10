@@ -8,16 +8,15 @@ import com.fasterxml.jackson.core.JsonProcessingException
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.common.serialization.IntegerDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.http4k.core.HttpHandler
 import org.http4k.core.Method
 import org.http4k.core.Request
 import org.slf4j.LoggerFactory
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory
-import org.springframework.kafka.test.utils.KafkaTestUtils
 import strikt.api.expectThat
 import strikt.assertions.isEqualTo
-import strikt.assertions.isGreaterThanOrEqualTo
 import strikt.assertions.isTrue
 import strikt.jackson.isTextual
 import strikt.jackson.path
@@ -31,10 +30,14 @@ import java.util.stream.StreamSupport
 
 class OrderTestScript(
     private val httpHandler: HttpHandler,
-    private val kafkaBrokers: String
+    private val kafkaBrokers: String,
+    private val integrationKafkaTopic: String = TOPIC_ORDER_EVENTS
 ) {
+    private val riderId: UUID = UUID.fromString("63770803-38f4-4594-aec2-4c74918f7165")
+    private val driverId: UUID = UUID.fromString("2c068a1a-9263-433f-a70b-067d51b98378")
+
     fun execute() {
-        createKafkaConsumer(listOf(TOPIC_ORDER_EVENTS)).use { kafkaConsumer ->
+        createKafkaConsumer(listOf(integrationKafkaTopic)).use { kafkaConsumer ->
             val orderId = placeNewOrder()
             adjustOrder(orderId)
             acceptTheOrder(orderId)
@@ -44,11 +47,10 @@ class OrderTestScript(
         }
     }
 
-    private fun verifyIntegrationEvents(orderId: UUID, kafkaConsumer: Consumer<String, String>) {
+    fun verifyIntegrationEvents(orderId: UUID, kafkaConsumer: Consumer<String, String>) {
         log.info("Print integration events")
         val kafkaRecordValues = getKafkaRecords(kafkaConsumer, Duration.ofSeconds(30), 23)
-        expectThat(kafkaRecordValues.size)
-            .isGreaterThanOrEqualTo(23)
+
         val lastKafkaRecordValue = kafkaRecordValues[kafkaRecordValues.size - 1]
         expectThat(lastKafkaRecordValue.jsonify()).isEqualTo(
             """
@@ -58,7 +60,7 @@ class OrderTestScript(
                       "eventTimestamp": ${TestEnvironment.clock.instant().toEpochMilli()},
                       "version":23,
                       "status":"COMPLETED",
-                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "riderId":"$riderId",
                       "price":300.00,
                       "route":[
                         {
@@ -72,7 +74,7 @@ class OrderTestScript(
                           "lon":30.485170724431292
                         }
                       ],
-                      "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
+                      "driverId":"$driverId"
                     }
                     """.format(orderId).jsonify()
         )
@@ -106,7 +108,7 @@ class OrderTestScript(
                       "id":"%s",
                       "version":23,
                       "status":"COMPLETED",
-                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "riderId":"$riderId",
                       "price":300.00,
                       "route":[
                         {
@@ -120,7 +122,7 @@ class OrderTestScript(
                           "lon":30.485170724431292
                         }
                       ],
-                      "driverId":"2c068a1a-9263-433f-a70b-067d51b98378",
+                      "driverId":"$driverId",
                       "placedDate": "${TestEnvironment.clock.now()}",
                       "acceptedDate": "${TestEnvironment.clock.now()}",
                       "completedDate": "${TestEnvironment.clock.now()}"
@@ -135,7 +137,7 @@ class OrderTestScript(
             orderId, """
                     {
                       "status":"ACCEPTED",
-                      "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
+                      "driverId":"$driverId"
                     }
                     """
         )
@@ -147,7 +149,7 @@ class OrderTestScript(
                       "id":"%s",
                       "version":22,
                       "status":"ACCEPTED",
-                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "riderId":"$riderId",
                       "price":300.00,
                       "route":[
                         {
@@ -161,7 +163,7 @@ class OrderTestScript(
                           "lon":30.485170724431292
                         }
                       ],
-                      "driverId":"2c068a1a-9263-433f-a70b-067d51b98378",
+                      "driverId":"$driverId",
                       "placedDate" : "${TestEnvironment.clock.now()}",
                       "acceptedDate" : "${TestEnvironment.clock.now()}"
                     }
@@ -193,7 +195,7 @@ class OrderTestScript(
                       "id":"%s",
                       "version":21,
                       "status":"ADJUSTED",
-                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "riderId":"$riderId",
                       "price":300.00,
                       "route":[
                         {
@@ -213,12 +215,13 @@ class OrderTestScript(
         )
     }
 
-    private fun placeNewOrder(): UUID {
+    fun placeNewOrder(riderId: UUID = UUID.fromString("63770803-38f4-4594-aec2-4c74918f7165")): UUID {
         log.info("Place a new order")
+
         val orderId = placeOrder(
             """
                     {
-                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "riderId":"$riderId",
                       "price":"123.45",
                       "route":[
                         {
@@ -242,7 +245,7 @@ class OrderTestScript(
                       "id":"%s",
                       "version":1,
                       "status":"PLACED",
-                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "riderId":"$riderId",
                       "price":123.45,
                       "route":[
                         {
@@ -321,30 +324,43 @@ class OrderTestScript(
         expectThat(response.bodyString().jsonify()).isEqualTo(expectedJson.jsonify())
     }
 
-    private fun createKafkaConsumer(topicsToConsume: List<String>): Consumer<String, String> {
-        val consumerProps = KafkaTestUtils.consumerProps(
-            kafkaBrokers,
-            this.javaClass.simpleName + "-consumer",
-            "true"
-        ).also {
-            it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
-        }
-        val cf = DefaultKafkaConsumerFactory(
-            consumerProps,
+    fun createKafkaConsumer(topicToConsume: String): Consumer<String, String> {
+        return createKafkaConsumer(listOf(topicToConsume))
+    }
+
+    fun createKafkaConsumer(topicsToConsume: List<String>): Consumer<String, String> {
+        val props: MutableMap<String, Any> = HashMap()
+        props[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafkaBrokers
+        props[ConsumerConfig.GROUP_ID_CONFIG] = this.javaClass.simpleName + "-consumer"
+        props[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = "true"
+        props[ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG] = "10"
+        props[ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG] = "60000"
+        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] =
+            IntegerDeserializer::class.java
+        props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] =
+            StringDeserializer::class.java
+        props[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
+
+        return KafkaConsumer(
+            props,
             StringDeserializer(),
             StringDeserializer()
-        )
-        return cf.createConsumer().also {
+        ).also {
             it.subscribe(topicsToConsume)
         }
     }
 
-    private fun getKafkaRecords(
+    fun getKafkaRecords(
         consumer: Consumer<String, String>,
         timeout: Duration,
         minRecords: Int
     ): List<String> {
-        val records = KafkaTestUtils.getRecords(consumer, timeout, minRecords)
+        val records = mutableListOf<ConsumerRecord<String, String>>()
+
+        do {
+            records.addAll(consumer.poll(timeout).map { it })
+        } while (records.size < minRecords)
+
         return StreamSupport.stream(Spliterators.spliteratorUnknownSize(records.iterator(), Spliterator.ORDERED), false)
             .sorted(Comparator.comparingLong { obj: ConsumerRecord<String, String> -> obj.timestamp() })
             .map { obj: ConsumerRecord<String, String> -> obj.value() }
