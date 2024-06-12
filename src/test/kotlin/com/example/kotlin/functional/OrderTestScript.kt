@@ -4,13 +4,10 @@ import com.example.eventsourcing.config.Json
 import com.example.eventsourcing.config.Json.jsonify
 import com.example.eventsourcing.config.Json.objectMapper
 import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
+import com.example.eventsourcing.config.Kafka.kafkaConsumer
 import com.fasterxml.jackson.core.JsonProcessingException
 import org.apache.kafka.clients.consumer.Consumer
-import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.common.serialization.IntegerDeserializer
-import org.apache.kafka.common.serialization.StringDeserializer
 import org.http4k.core.HttpHandler
 import org.http4k.core.Method
 import org.http4k.core.Request
@@ -33,12 +30,12 @@ class OrderTestScript(
     private val kafkaBrokers: String,
     private val integrationKafkaTopic: String = TOPIC_ORDER_EVENTS
 ) {
-    private val riderId: UUID = UUID.fromString("63770803-38f4-4594-aec2-4c74918f7165")
-    private val driverId: UUID = UUID.fromString("2c068a1a-9263-433f-a70b-067d51b98378")
+    private val riderId: UUID = UUID.randomUUID()
+    private val driverId: UUID = UUID.randomUUID()
 
     fun execute() {
-        createKafkaConsumer(listOf(integrationKafkaTopic)).use { kafkaConsumer ->
-            val orderId = placeNewOrder()
+        kafkaConsumer(kafkaBrokers, listOf(integrationKafkaTopic)).use { kafkaConsumer ->
+            val orderId = placeNewOrder(riderId)
             adjustOrder(orderId)
             acceptTheOrder(orderId)
             completeTheOrder(orderId)
@@ -215,7 +212,7 @@ class OrderTestScript(
         )
     }
 
-    fun placeNewOrder(riderId: UUID = UUID.fromString("63770803-38f4-4594-aec2-4c74918f7165")): UUID {
+    fun placeNewOrder(riderId: UUID): UUID {
         log.info("Place a new order")
 
         val orderId = placeOrder(
@@ -322,32 +319,6 @@ class OrderTestScript(
         expectThat(response.status.successful)
             .isTrue()
         expectThat(response.bodyString().jsonify()).isEqualTo(expectedJson.jsonify())
-    }
-
-    fun createKafkaConsumer(topicToConsume: String): Consumer<String, String> {
-        return createKafkaConsumer(listOf(topicToConsume))
-    }
-
-    fun createKafkaConsumer(topicsToConsume: List<String>): Consumer<String, String> {
-        val props: MutableMap<String, Any> = HashMap()
-        props[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafkaBrokers
-        props[ConsumerConfig.GROUP_ID_CONFIG] = this.javaClass.simpleName + "-consumer"
-        props[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = "true"
-        props[ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG] = "10"
-        props[ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG] = "60000"
-        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] =
-            IntegerDeserializer::class.java
-        props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] =
-            StringDeserializer::class.java
-        props[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
-
-        return KafkaConsumer(
-            props,
-            StringDeserializer(),
-            StringDeserializer()
-        ).also {
-            it.subscribe(topicsToConsume)
-        }
     }
 
     fun getKafkaRecords(

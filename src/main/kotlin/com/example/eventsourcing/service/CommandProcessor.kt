@@ -21,22 +21,20 @@ class CommandProcessor(
         commandHandlers
             .firstOrNull { it.commandType == command.javaClass }
             ?.let {
-                log.debug(
-                    "Handling command {} with {}",
-                    command.javaClass.simpleName, it.javaClass.simpleName
-                )
-                it.handle(aggregate, command)
-            } ?: defaultCommandHandler.handle(aggregate, command)
-            .also {
-                log.debug(
-                    "No specialized handler found, handling command {} with {}",
-                    command.javaClass.simpleName, defaultCommandHandler.javaClass.simpleName
-                )
+                it.handle(aggregate, command).also {
+                    log.debug("Handling command {} with {}", command.javaClass.simpleName, it.javaClass.simpleName)
+                }
             }
-        val newEvents = aggregateStore.saveAggregate(aggregate)
+            ?: defaultCommandHandler.handle(aggregate, command)
+                .also {
+                    log.debug(
+                        "No specialized handler found, handling command {} with {}",
+                        command.javaClass.simpleName, defaultCommandHandler.javaClass.simpleName
+                    )
+                }
         aggregateChangesHandlers
             .filter { it.aggregateType === aggregateType }
-            .forEach { it.handleEvents(newEvents, aggregate) }
+            .forEach { it.handleEvents(aggregateStore.saveAggregate(aggregate), aggregate) }
         return aggregate
     }
 

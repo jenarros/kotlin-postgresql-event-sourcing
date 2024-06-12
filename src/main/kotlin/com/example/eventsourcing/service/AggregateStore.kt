@@ -19,26 +19,26 @@ class AggregateStore(
 ) {
     fun saveAggregate(aggregate: Aggregate): List<EventWithId<Event>> {
         log.debug("Saving aggregate {}", aggregate)
-        val aggregateType = aggregate.aggregateType
-        val aggregateId = aggregate.aggregateId
-        aggregateRepository.createAggregateIfAbsent(aggregateType, aggregateId)
-        val expectedVersion = aggregate.baseVersion
-        val newVersion = aggregate.version
-        if (!aggregateRepository.checkAndUpdateAggregateVersion(aggregateId, expectedVersion, newVersion)) {
+        aggregateRepository.createAggregateIfAbsent(aggregate.aggregateType, aggregate.aggregateId)
+
+        if (!aggregateRepository.checkAndUpdateAggregateVersion(
+                aggregate.aggregateId,
+                aggregate.baseVersion,
+                aggregate.version
+            )) {
             log.warn(
                 "Optimistic concurrency control error in aggregate {} {}: " +
                         "actual version doesn't match expected version {}",
-                aggregateType, aggregateId, expectedVersion
+                aggregate.aggregateType, aggregate.aggregateId, aggregate.baseVersion
             )
-            throw OptimisticConcurrencyControlError(expectedVersion.toLong())
+            throw OptimisticConcurrencyControlError(aggregate.baseVersion.toLong())
         }
-        val snapshotting = properties.getSnapshotting(aggregateType)
 
         return aggregate.changes.map {
-            log.info("Appending {} event: {}", aggregateType, it)
-            val eventWithId: EventWithId<Event> = eventRepository.appendEvent(it)
-            createAggregateSnapshot(snapshotting, aggregate)
-            eventWithId
+            log.info("Appending {} event: {}", aggregate.aggregateType, it)
+            eventRepository.appendEvent<Event>(it).also {
+                createAggregateSnapshot(properties.getSnapshotting(aggregate.aggregateType), aggregate)
+            }
         }
     }
 
@@ -61,16 +61,18 @@ class AggregateStore(
         version: Int? = null
     ): Aggregate {
         log.debug("Reading {} aggregate {}", aggregateType, aggregateId)
-        val (enabled) = properties.getSnapshotting(aggregateType)
-        val aggregate: Aggregate = if (enabled) {
+
+        val aggregate: Aggregate = if (properties.getSnapshotting(aggregateType).enabled) {
             readAggregateFromSnapshot(aggregateId, version)
-                ?: readAggregateFromEvents(aggregateType, aggregateId, version).also {
-                    log.debug("Aggregate {} snapshot not found", aggregateId)
-                }
+                ?: readAggregateFromEvents(aggregateType, aggregateId, version)
+                    .also {
+                        log.debug("Aggregate {} snapshot not found", aggregateId)
+                    }
         } else {
             readAggregateFromEvents(aggregateType, aggregateId, version)
         }
         log.debug("Read aggregate {}", aggregate)
+
         return aggregate
     }
 
@@ -80,15 +82,15 @@ class AggregateStore(
     ): Aggregate? {
         return aggregateRepository.readAggregateSnapshot(aggregateId, aggregateVersion)
             ?.let { aggregate: Aggregate ->
-                val snapshotVersion = aggregate.version
-                log.debug("Read aggregate {} snapshot version {}", aggregateId, snapshotVersion)
-                if (aggregateVersion == null || snapshotVersion < aggregateVersion) {
-                    val events = eventRepository.readEvents(aggregateId, snapshotVersion, aggregateVersion)
+                log.debug("Read aggregate {} snapshot version {}", aggregateId, aggregate.version)
+
+                if (aggregateVersion == null || aggregate.version < aggregateVersion) {
+                    val events = eventRepository.readEvents(aggregateId, aggregate.version, aggregateVersion)
                         .map { it.event }
                         .toList()
                     log.debug(
                         "Read {} events after version {} for aggregate {}",
-                        events.size, snapshotVersion, aggregateId
+                        events.size, aggregate.version, aggregateId
                     )
                     aggregate.loadFromHistory(events)
                 }

@@ -4,7 +4,7 @@ import com.example.eventsourcing.config.EventSourcingProperties
 import com.example.eventsourcing.config.IntegrationEventProperties
 import com.example.eventsourcing.config.Json.objectMapper
 import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
-import com.example.eventsourcing.config.Kafka.kafkaClient
+import com.example.eventsourcing.config.Kafka.kafkaProducer
 import com.example.eventsourcing.config.SnapshottingProperties
 import com.example.eventsourcing.controller.ErrorHandler
 import com.example.eventsourcing.controller.OrdersController
@@ -94,7 +94,7 @@ fun app(
     )
 
     if (integrationEventProperties.enabled) {
-        val kafkaTemplate = kafkaClient(kafkaBootstrapServers, integrationEventProperties.topic)
+        val kafkaTemplate = kafkaProducer(kafkaBootstrapServers, integrationEventProperties.topic)
         val orderIntegrationEventSender =
             OrderIntegrationEventSender(aggregateStore, kafkaTemplate, integrationEventProperties.topic, objectMapper)
         val eventSubscriptionProcessor =
@@ -118,33 +118,23 @@ fun app(
     return ServerFilters.CatchAll(ErrorHandler)
         .then(
             routes(
-                "/orders" bind Method.GET to { request: Request -> ordersController.orders() },
+                "/orders" bind Method.GET to { request: Request ->
+                    ordersController.orders()
+                },
                 "/orders" bind Method.POST to { request: Request ->
                     ordersController.placeOrder(
-                        objectMapper.readTree(
-                            request.bodyString()
-                        )
+                        objectMapper.readTree(request.bodyString())
                     )
                 },
                 "/orders/{orderId}" bind Method.GET to { request: Request ->
                     ordersController.getOrder(
-                        UUID.fromString(
-                            request.path(
-                                "orderId"
-                            )
-                        )
+                        UUID.fromString(request.path("orderId"))
                     )
                 },
                 "/orders/{orderId}" bind Method.PUT to { request: Request ->
                     ordersController.modifyOrder(
-                        UUID.fromString(
-                            request.path(
-                                "orderId"
-                            )
-                        ),
-                        objectMapper.readTree(
-                            request.bodyString()
-                        )
+                        UUID.fromString(request.path("orderId")),
+                        objectMapper.readTree(request.bodyString())
                     )
                 },
             )
