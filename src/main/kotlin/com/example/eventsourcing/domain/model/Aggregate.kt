@@ -3,7 +3,6 @@ package com.example.eventsourcing.domain.model
 import com.example.eventsourcing.domain.model.command.Command
 import com.example.eventsourcing.domain.model.event.Event
 import com.fasterxml.jackson.annotation.JsonIgnore
-import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import java.util.*
 import java.util.function.Consumer
@@ -16,7 +15,7 @@ abstract class Aggregate protected constructor(val aggregateId: UUID, var versio
     @JsonIgnore
     var baseVersion: Int = version
 
-    abstract val aggregateType: com.example.eventsourcing.domain.model.AggregateType
+    abstract val aggregateType: AggregateType
 
     fun loadFromHistory(events: List<Event>) {
         check(changes.isEmpty()) { "Aggregate has non-empty changes" }
@@ -31,7 +30,7 @@ abstract class Aggregate protected constructor(val aggregateId: UUID, var versio
     }
 
     protected val nextVersion: Int
-        protected get() = version + 1
+        get() = version + 1
 
     protected fun applyChange(event: Event) {
         check(event.version == nextVersion) {
@@ -43,12 +42,10 @@ abstract class Aggregate protected constructor(val aggregateId: UUID, var versio
     }
 
     private fun apply(event: Event) {
-        com.example.eventsourcing.domain.model.Aggregate.Companion.log.debug("Applying event {}", event)
         invoke(event, "apply")
     }
 
     fun process(command: Command) {
-        com.example.eventsourcing.domain.model.Aggregate.Companion.log.debug("Processing command {}", command)
         invoke(command, "process")
     }
 
@@ -64,9 +61,5 @@ abstract class Aggregate protected constructor(val aggregateId: UUID, var versio
                 else -> e
             }
         }
-    }
-
-    companion object {
-        private val log = LoggerFactory.getLogger(com.example.eventsourcing.domain.model.Aggregate::class.java)
     }
 }

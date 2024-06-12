@@ -39,6 +39,7 @@ import org.http4k.routing.path
 import org.http4k.routing.routes
 import org.http4k.server.Undertow
 import org.http4k.server.asServer
+import org.slf4j.LoggerFactory
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean
@@ -55,6 +56,8 @@ fun app(
     hikariConfig: HikariConfig,
     integrationEventProperties: IntegrationEventProperties
 ): RoutingHttpHandler {
+    val logger = LoggerFactory.getLogger("log")
+
     val dataSource = HikariDataSource(hikariConfig).also {
         Flyway.configure()
             .dataSource(it)
@@ -67,7 +70,8 @@ fun app(
     val eventRepository = EventRepository(namedParameterJdbcTemplate, objectMapper)
     val aggregateStore = AggregateStore(
         aggregateRepository, eventRepository,
-        EventSourcingProperties(mapOf(AggregateType.ORDER to snapshottingProperties))
+        EventSourcingProperties(mapOf(AggregateType.ORDER to snapshottingProperties)),
+        logger
     )
     val hibernateProperties = Properties().also {
         it.setProperty("hibernate.physical_naming_strategy", CamelCaseToUnderscoresNamingStrategy::class.java.name)
@@ -90,19 +94,21 @@ fun app(
         aggregateStore,
         listOf(PlaceOrderCommandHandler()),
         DefaultCommandHandler(),
-        listOf(OrderProjectionUpdater(orderProjectionRepository))
+        listOf(OrderProjectionUpdater(orderProjectionRepository, logger)),
+        logger
     )
 
     if (integrationEventProperties.enabled) {
         val kafkaTemplate = kafkaProducer(kafkaBootstrapServers, integrationEventProperties.topic)
         val orderIntegrationEventSender =
-            OrderIntegrationEventSender(aggregateStore, kafkaTemplate, integrationEventProperties.topic, objectMapper)
+            OrderIntegrationEventSender(aggregateStore, kafkaTemplate, integrationEventProperties.topic, objectMapper, logger)
         val eventSubscriptionProcessor =
-            EventSubscriptionProcessor(EventSubscriptionRepository(namedParameterJdbcTemplate), eventRepository)
+            EventSubscriptionProcessor(EventSubscriptionRepository(namedParameterJdbcTemplate), eventRepository, logger)
 
         val scheduledEventSubscriptionProcessor = ScheduledEventSubscriptionProcessor(
             listOf(orderIntegrationEventSender),
-            eventSubscriptionProcessor
+            eventSubscriptionProcessor,
+            logger
         )
 
         GlobalScope.launch {

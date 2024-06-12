@@ -7,16 +7,18 @@ import com.example.eventsourcing.domain.model.event.Event
 import com.example.eventsourcing.domain.model.event.EventWithId
 import com.example.eventsourcing.adapters.db.eventsourcing.AggregateRepository
 import com.example.eventsourcing.adapters.db.eventsourcing.EventRepository
-import org.slf4j.LoggerFactory
+import com.example.eventsourcing.domain.model.Aggregate
+import org.slf4j.Logger
 import java.util.*
 
 class AggregateStore(
     private val aggregateRepository: AggregateRepository,
     private val eventRepository: EventRepository,
-    private val properties: EventSourcingProperties
+    private val properties: EventSourcingProperties,
+    private val logger: Logger
 ) {
-    fun saveAggregate(aggregate: com.example.eventsourcing.domain.model.Aggregate): List<EventWithId<Event>> {
-        log.debug("Saving aggregate {}", aggregate)
+    fun saveAggregate(aggregate: Aggregate): List<EventWithId<Event>> {
+        logger.debug("Saving aggregate {}", aggregate)
         aggregateRepository.createAggregateIfAbsent(aggregate.aggregateType, aggregate.aggregateId)
 
         if (!aggregateRepository.checkAndUpdateAggregateVersion(
@@ -24,7 +26,7 @@ class AggregateStore(
                 aggregate.baseVersion,
                 aggregate.version
             )) {
-            log.warn(
+            logger.warn(
                 "Optimistic concurrency control error in aggregate {} {}: " +
                         "actual version doesn't match expected version {}",
                 aggregate.aggregateType, aggregate.aggregateId, aggregate.baseVersion
@@ -33,7 +35,7 @@ class AggregateStore(
         }
 
         return aggregate.changes.map {
-            log.info("Appending {} event: {}", aggregate.aggregateType, it)
+            logger.info("Appending {} event: {}", aggregate.aggregateType, it)
             eventRepository.appendEvent<Event>(it).also {
                 createAggregateSnapshot(properties.getSnapshotting(aggregate.aggregateType), aggregate)
             }
@@ -42,10 +44,10 @@ class AggregateStore(
 
     private fun createAggregateSnapshot(
         snapshotting: SnapshottingProperties,
-        aggregate: com.example.eventsourcing.domain.model.Aggregate
+        aggregate: Aggregate
     ) {
         if (snapshotting.enabled && snapshotting.nthEvent > 1 && aggregate.version % snapshotting.nthEvent == 0) {
-            log.info(
+            logger.info(
                 "Creating {} aggregate {} version {} snapshot",
                 aggregate.aggregateType, aggregate.aggregateId, aggregate.version
             )
@@ -57,19 +59,19 @@ class AggregateStore(
         aggregateType: AggregateType,
         aggregateId: UUID,
         version: Int? = null
-    ): com.example.eventsourcing.domain.model.Aggregate {
-        log.debug("Reading {} aggregate {}", aggregateType, aggregateId)
+    ): Aggregate {
+        logger.debug("Reading {} aggregate {}", aggregateType, aggregateId)
 
-        val aggregate: com.example.eventsourcing.domain.model.Aggregate = if (properties.getSnapshotting(aggregateType).enabled) {
+        val aggregate: Aggregate = if (properties.getSnapshotting(aggregateType).enabled) {
             readAggregateFromSnapshot(aggregateId, version)
                 ?: readAggregateFromEvents(aggregateType, aggregateId, version)
                     .also {
-                        log.debug("Aggregate {} snapshot not found", aggregateId)
+                        logger.debug("Aggregate {} snapshot not found", aggregateId)
                     }
         } else {
             readAggregateFromEvents(aggregateType, aggregateId, version)
         }
-        log.debug("Read aggregate {}", aggregate)
+        logger.debug("Read aggregate {}", aggregate)
 
         return aggregate
     }
@@ -77,16 +79,16 @@ class AggregateStore(
     private fun readAggregateFromSnapshot(
         aggregateId: UUID,
         aggregateVersion: Int? = null
-    ): com.example.eventsourcing.domain.model.Aggregate? {
+    ): Aggregate? {
         return aggregateRepository.readAggregateSnapshot(aggregateId, aggregateVersion)
-            ?.let { aggregate: com.example.eventsourcing.domain.model.Aggregate ->
-                log.debug("Read aggregate {} snapshot version {}", aggregateId, aggregate.version)
+            ?.let { aggregate: Aggregate ->
+                logger.debug("Read aggregate {} snapshot version {}", aggregateId, aggregate.version)
 
                 if (aggregateVersion == null || aggregate.version < aggregateVersion) {
                     val events = eventRepository.readEvents(aggregateId, aggregate.version, aggregateVersion)
                         .map { it.event }
                         .toList()
-                    log.debug(
+                    logger.debug(
                         "Read {} events after version {} for aggregate {}",
                         events.size, aggregate.version, aggregateId
                     )
@@ -100,17 +102,13 @@ class AggregateStore(
         aggregateType: AggregateType,
         aggregateId: UUID,
         aggregateVersion: Int? = null
-    ): com.example.eventsourcing.domain.model.Aggregate {
+    ): Aggregate {
         val events = eventRepository.readEvents(aggregateId, null, aggregateVersion)
             .map { it.event }
 
-        log.debug("Read {} events for aggregate {}", events.size, aggregateId)
-        return aggregateType.newInstance<com.example.eventsourcing.domain.model.Aggregate>(aggregateId).also {
+        logger.debug("Read {} events for aggregate {}", events.size, aggregateId)
+        return aggregateType.newInstance<Aggregate>(aggregateId).also {
             it.loadFromHistory(events)
         }
-    }
-
-    companion object {
-        private val log = LoggerFactory.getLogger(AggregateStore::class.java)
     }
 }

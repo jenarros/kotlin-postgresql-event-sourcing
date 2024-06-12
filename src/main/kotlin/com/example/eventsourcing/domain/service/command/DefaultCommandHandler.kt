@@ -4,7 +4,7 @@ import com.example.eventsourcing.domain.model.Aggregate
 import com.example.eventsourcing.domain.model.command.Command
 
 class DefaultCommandHandler : CommandHandler<Command> {
-    override fun handle(aggregate: com.example.eventsourcing.domain.model.Aggregate, command: Command) {
+    override fun handle(aggregate: Aggregate, command: Command) {
         aggregate.process(command)
     }
 

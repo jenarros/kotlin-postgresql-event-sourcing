@@ -1,12 +1,13 @@
 package com.example.eventsourcing.domain.service
 
-import com.example.eventsourcing.domain.service.event.AsyncEventHandler
-import org.slf4j.LoggerFactory
+import com.example.eventsourcing.adapters.db.eventsourcing.handlers.AsyncEventHandler
+import org.slf4j.Logger
 import java.util.function.Consumer
 
 class ScheduledEventSubscriptionProcessor(
     private val eventHandlers: List<AsyncEventHandler>,
-    private val eventSubscriptionProcessor: EventSubscriptionProcessor
+    private val eventSubscriptionProcessor: EventSubscriptionProcessor,
+    private val logger: Logger
 ) {
     fun processNewEvents() {
         eventHandlers.forEach(Consumer { eventHandler: AsyncEventHandler -> this.processNewEvents(eventHandler) })
@@ -16,14 +17,10 @@ class ScheduledEventSubscriptionProcessor(
         try {
             eventSubscriptionProcessor.processNewEvents(eventHandler)
         } catch (e: Exception) {
-            log.warn(
+            logger.warn(
                 "Failed to handle new events for subscription %s"
                     .format(eventHandler.subscriptionName()), e
             )
         }
-    }
-
-    companion object {
-        private val log = LoggerFactory.getLogger(ScheduledEventSubscriptionProcessor::class.java)
     }
 }

@@ -7,17 +7,19 @@ import com.example.eventsourcing.domain.model.event.EventWithId
 import com.example.eventsourcing.adapters.kafka.dto.OrderDto
 import com.example.eventsourcing.adapters.kafka.OrderMapper.toDto
 import com.example.eventsourcing.domain.service.AggregateStore
-import com.example.eventsourcing.domain.service.event.AsyncEventHandler
+import com.example.eventsourcing.adapters.db.eventsourcing.handlers.AsyncEventHandler
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 class OrderIntegrationEventSender(
     private val aggregateStore: AggregateStore,
     private val kafkaTemplate: KafkaProducer<String, String>,
     private val kafkaTopic: String,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val log: Logger
 ) : AsyncEventHandler {
     override fun handleEvent(eventWithId: EventWithId<Event>) {
         val event = eventWithId.event
@@ -40,8 +42,4 @@ class OrderIntegrationEventSender(
     }
 
     override val aggregateType: AggregateType = AggregateType.ORDER
-
-    companion object {
-        private val log = LoggerFactory.getLogger(OrderIntegrationEventSender::class.java)
-    }
 }

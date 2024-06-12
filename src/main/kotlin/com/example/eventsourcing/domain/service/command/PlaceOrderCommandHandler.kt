@@ -5,7 +5,7 @@ import com.example.eventsourcing.domain.model.command.Command
 import com.example.eventsourcing.domain.model.command.PlaceOrderCommand
 
 class PlaceOrderCommandHandler : CommandHandler<PlaceOrderCommand> {
-    override fun handle(aggregate: com.example.eventsourcing.domain.model.Aggregate, command: Command) {
+    override fun handle(aggregate: Aggregate, command: Command) {
         // Add additional business logic here.
         aggregate.process(command)
         // Also, add additional business logic here.
