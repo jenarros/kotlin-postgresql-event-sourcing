@@ -278,7 +278,7 @@ Snapshotting for an aggregate type can be disabled and configured in the `applic
 ```yaml
 event-sourcing:
   snapshotting:
-    # com.example.eventsourcing.domain.AggregateType
+    # com.example.eventsourcing.model.AggregateType
     ORDER:
       enabled: true
       # Create a snapshot on every nth event

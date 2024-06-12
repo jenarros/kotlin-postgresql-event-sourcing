@@ -1,8 +1,8 @@
 package com.example.kotlin.functional.exposed
 
-import com.example.eventsourcing.dto.OrderStatus
-import com.example.eventsourcing.projection.OrderProjectionEn
-import com.example.eventsourcing.projection.WaypointProjectionE
+import com.example.eventsourcing.adapters.db.projection.OrderProjectionEn
+import com.example.eventsourcing.adapters.db.projection.WaypointProjectionE
+import com.example.eventsourcing.domain.model.OrderStatus
 import com.example.kotlin.functional.TestEnvironment
 import com.zaxxer.hikari.HikariDataSource
 import org.flywaydb.core.Flyway

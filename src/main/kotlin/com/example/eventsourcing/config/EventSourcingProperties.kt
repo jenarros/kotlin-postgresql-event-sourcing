@@ -1,7 +1,7 @@
 package com.example.eventsourcing.config
 
 import com.example.eventsourcing.config.SnapshottingProperties.Companion.NO_SNAPSHOTTING
-import com.example.eventsourcing.domain.AggregateType
+import com.example.eventsourcing.domain.model.AggregateType
 
 class EventSourcingProperties(private val snapshotting: Map<AggregateType, SnapshottingProperties>) {
     fun getSnapshotting(aggregateType: AggregateType): SnapshottingProperties {
