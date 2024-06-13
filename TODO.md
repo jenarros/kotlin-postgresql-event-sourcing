@@ -1,3 +1,5 @@
+- 
 - Remove reflection usage
 - Remove unsafe cast
 - Replace spring jpa with exposed
+- remove the need for jsonignore

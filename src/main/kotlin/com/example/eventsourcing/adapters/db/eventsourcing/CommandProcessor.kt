@@ -1,6 +1,6 @@
 package com.example.eventsourcing.adapters.db.eventsourcing
 
-import com.example.eventsourcing.domain.model.Aggregate
+import com.example.eventsourcing.domain.Aggregate
 import com.example.eventsourcing.domain.model.command.Command
 import com.example.eventsourcing.domain.handlers.CommandHandler
 import com.example.eventsourcing.domain.handlers.DefaultCommandHandler
@@ -18,21 +18,23 @@ class CommandProcessor(
         logger.debug("Processing command {}", command)
         val aggregateType = command.aggregateType
         val aggregateId = command.aggregateId
-        val aggregate = aggregateStore.readAggregate(aggregateType, aggregateId)
-        commandHandlers
-            .firstOrNull { it.commandType == command.javaClass }
-            ?.let {
-                it.handle(aggregate, command).also {
-                    logger.debug("Handling command {} with {}", command.javaClass.simpleName, it.javaClass.simpleName)
+        val aggregate = aggregateStore.readAggregate(aggregateType, aggregateId).let { readAggregate ->
+            commandHandlers
+                .firstOrNull { it.commandType == command.javaClass }
+                ?.let {
+                    it.handle(readAggregate, command).also {
+                        logger.debug("Handling command {} with {}", command.javaClass.simpleName, it.javaClass.simpleName)
+                    }
                 }
-            }
-            ?: defaultCommandHandler.handle(aggregate, command)
-                .also {
-                    logger.debug(
-                        "No specialized handler found, handling command {} with {}",
-                        command.javaClass.simpleName, defaultCommandHandler.javaClass.simpleName
-                    )
-                }
+                ?: defaultCommandHandler.handle(readAggregate, command)
+                    .also {
+                        logger.debug(
+                            "No specialized handler found, handling command {} with {}",
+                            command.javaClass.simpleName, defaultCommandHandler.javaClass.simpleName
+                        )
+                    }
+        }
+
         aggregateChangesHandlers
             .filter { it.aggregateType === aggregateType }
             .forEach { it.handleEvents(aggregateStore.saveAggregate(aggregate), aggregate) }

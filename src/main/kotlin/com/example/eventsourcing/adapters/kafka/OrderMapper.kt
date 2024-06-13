@@ -1,7 +1,7 @@
 package com.example.eventsourcing.adapters.kafka
 
 import com.example.eventsourcing.adapters.kafka.dto.OrderDto
-import com.example.eventsourcing.domain.model.OrderAggregate
+import com.example.eventsourcing.domain.OrderAggregate
 import com.example.eventsourcing.domain.model.event.Event
 
 object OrderMapper {

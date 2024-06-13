@@ -1,6 +1,7 @@
 package com.example.eventsourcing.adapters.db.eventsourcing.repository
 
-import com.example.eventsourcing.domain.model.AggregateType
+import com.example.eventsourcing.domain.Aggregate
+import com.example.eventsourcing.domain.AggregateType
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.postgresql.util.PGobject
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
@@ -53,7 +54,7 @@ class AggregateRepository(
         return updatedRows > 0
     }
 
-    fun createAggregateSnapshot(aggregate: com.example.eventsourcing.domain.model.Aggregate) {
+    fun createAggregateSnapshot(aggregate: Aggregate) {
         jdbcTemplate.update(
             """
                             INSERT INTO ES_AGGREGATE_SNAPSHOT (AGGREGATE_ID, VERSION, JSON_DATA)
@@ -71,7 +72,7 @@ class AggregateRepository(
     fun readAggregateSnapshot(
         aggregateId: UUID,
         version: Int?
-    ): com.example.eventsourcing.domain.model.Aggregate? {
+    ): Aggregate? {
         val parameters = MapSqlParameterSource()
         parameters.addValue("aggregateId", aggregateId)
         parameters.addValue("version", version, Types.INTEGER)
@@ -91,7 +92,7 @@ class AggregateRepository(
         ) { rs: ResultSet, rowNum: Int -> toAggregate(rs, rowNum) }.firstOrNull()
     }
 
-    private fun toAggregate(rs: ResultSet, rowNum: Int): com.example.eventsourcing.domain.model.Aggregate {
+    private fun toAggregate(rs: ResultSet, rowNum: Int): Aggregate {
         val aggregateType = AggregateType.valueOf(rs.getString("AGGREGATE_TYPE"))
         val jsonObj = rs.getObject("JSON_DATA") as PGobject
 

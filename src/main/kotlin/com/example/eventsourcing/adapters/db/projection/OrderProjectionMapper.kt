@@ -1,6 +1,6 @@
 package com.example.eventsourcing.adapters.db.projection
 
-import com.example.eventsourcing.domain.model.OrderAggregate
+import com.example.eventsourcing.domain.OrderAggregate
 import com.example.eventsourcing.domain.model.OrderWaypoint
 
 object OrderProjectionMapper {

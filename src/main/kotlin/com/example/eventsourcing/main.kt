@@ -8,7 +8,7 @@ import com.example.eventsourcing.config.Kafka.kafkaProducer
 import com.example.eventsourcing.config.SnapshottingProperties
 import com.example.eventsourcing.adapters.api.ErrorHandler
 import com.example.eventsourcing.adapters.api.OrdersController
-import com.example.eventsourcing.domain.model.AggregateType
+import com.example.eventsourcing.domain.AggregateType
 import com.example.eventsourcing.adapters.db.projection.OrderProjection
 import com.example.eventsourcing.adapters.db.eventsourcing.repository.AggregateRepository
 import com.example.eventsourcing.adapters.db.eventsourcing.repository.EventRepository

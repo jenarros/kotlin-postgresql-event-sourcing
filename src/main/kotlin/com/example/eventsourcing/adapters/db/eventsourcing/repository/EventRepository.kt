@@ -1,6 +1,6 @@
 package com.example.eventsourcing.adapters.db.eventsourcing.repository
 
-import com.example.eventsourcing.domain.model.AggregateType
+import com.example.eventsourcing.domain.AggregateType
 import com.example.eventsourcing.domain.model.event.Event
 import com.example.eventsourcing.domain.model.event.EventType
 import com.example.eventsourcing.domain.model.event.EventWithId

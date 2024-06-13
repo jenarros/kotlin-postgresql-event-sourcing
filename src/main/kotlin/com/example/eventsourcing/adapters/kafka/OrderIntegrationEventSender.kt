@@ -1,7 +1,7 @@
 package com.example.eventsourcing.adapters.kafka
 
-import com.example.eventsourcing.domain.model.AggregateType
-import com.example.eventsourcing.domain.model.OrderAggregate
+import com.example.eventsourcing.domain.AggregateType
+import com.example.eventsourcing.domain.OrderAggregate
 import com.example.eventsourcing.domain.model.event.Event
 import com.example.eventsourcing.domain.model.event.EventWithId
 import com.example.eventsourcing.adapters.kafka.dto.OrderDto

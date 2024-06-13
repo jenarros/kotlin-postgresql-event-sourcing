@@ -1,6 +1,6 @@
 package com.example.eventsourcing.domain.model.command
 
-import com.example.eventsourcing.domain.model.AggregateType
+import com.example.eventsourcing.domain.AggregateType
 import com.example.eventsourcing.domain.model.OrderWaypoint
 import java.math.BigDecimal
 import java.time.Instant

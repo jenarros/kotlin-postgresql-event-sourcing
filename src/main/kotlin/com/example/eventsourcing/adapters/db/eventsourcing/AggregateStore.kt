@@ -4,10 +4,12 @@ import com.example.eventsourcing.adapters.db.eventsourcing.repository.AggregateR
 import com.example.eventsourcing.adapters.db.eventsourcing.repository.EventRepository
 import com.example.eventsourcing.config.EventSourcingProperties
 import com.example.eventsourcing.config.SnapshottingProperties
-import com.example.eventsourcing.domain.model.AggregateType
+import com.example.eventsourcing.domain.AggregateType
 import com.example.eventsourcing.domain.model.event.Event
 import com.example.eventsourcing.domain.model.event.EventWithId
-import com.example.eventsourcing.domain.model.Aggregate
+import com.example.eventsourcing.domain.Aggregate
+import com.example.eventsourcing.domain.OrderAggregate
+import com.example.eventsourcing.domain.loadFromHistory
 import org.slf4j.Logger
 import java.util.*
 
@@ -28,8 +30,8 @@ class AggregateStore(
         ) {
             logger.warn(
                 "Optimistic concurrency control error in aggregate {} {}: " +
-                        "actual version doesn't match expected version {}",
-                aggregate.aggregateType, aggregate.aggregateId, aggregate.baseVersion
+                        "actual version {} doesn't match expected version {}",
+                aggregate.aggregateType, aggregate.aggregateId, aggregate.version, aggregate.baseVersion
             )
             throw OptimisticConcurrencyControlError(aggregate.baseVersion.toLong())
         }
@@ -101,8 +103,12 @@ class AggregateStore(
             .map { it.event }
 
         logger.debug("Read {} events for aggregate {}", events.size, aggregateId)
-        return aggregateType.newInstance<Aggregate>(aggregateId).also {
-            it.loadFromHistory(events)
+        return when (aggregateType) {
+            AggregateType.ORDER -> OrderAggregate(
+                aggregateId = aggregateId,
+                version = aggregateVersion ?: 0,
+                baseVersion = aggregateVersion ?: 0
+            ).loadFromHistory(events)
         }
     }
 }
