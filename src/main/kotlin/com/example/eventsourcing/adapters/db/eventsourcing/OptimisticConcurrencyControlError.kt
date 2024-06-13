@@ -1,4 +1,4 @@
-package com.example.eventsourcing.domain.service
+package com.example.eventsourcing.adapters.db.eventsourcing
 
 import com.example.eventsourcing.domain.model.Error
 

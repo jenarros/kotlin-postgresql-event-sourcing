@@ -8,7 +8,7 @@ import com.example.eventsourcing.domain.model.command.PlaceOrderCommand
 import com.example.eventsourcing.domain.model.OrderStatus
 import com.example.eventsourcing.domain.model.OrderWaypoint
 import com.example.eventsourcing.adapters.db.projection.OrderProjection
-import com.example.eventsourcing.domain.service.CommandProcessor
+import com.example.eventsourcing.adapters.db.eventsourcing.CommandProcessor
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper

@@ -1,9 +1,9 @@
-package com.example.eventsourcing.domain.service
+package com.example.eventsourcing.adapters.db.eventsourcing
 
 import com.example.eventsourcing.domain.model.event.EventSubscriptionCheckpoint
-import com.example.eventsourcing.adapters.db.eventsourcing.EventRepository
-import com.example.eventsourcing.adapters.db.eventsourcing.EventSubscriptionRepository
 import com.example.eventsourcing.adapters.db.eventsourcing.handlers.AsyncEventHandler
+import com.example.eventsourcing.adapters.db.eventsourcing.repository.EventRepository
+import com.example.eventsourcing.adapters.db.eventsourcing.repository.EventSubscriptionRepository
 import org.slf4j.Logger
 
 class EventSubscriptionProcessor(

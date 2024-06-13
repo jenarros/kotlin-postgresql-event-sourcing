@@ -1,12 +1,12 @@
-package com.example.eventsourcing.domain.service
+package com.example.eventsourcing.adapters.db.eventsourcing
 
+import com.example.eventsourcing.adapters.db.eventsourcing.repository.AggregateRepository
+import com.example.eventsourcing.adapters.db.eventsourcing.repository.EventRepository
 import com.example.eventsourcing.config.EventSourcingProperties
 import com.example.eventsourcing.config.SnapshottingProperties
 import com.example.eventsourcing.domain.model.AggregateType
 import com.example.eventsourcing.domain.model.event.Event
 import com.example.eventsourcing.domain.model.event.EventWithId
-import com.example.eventsourcing.adapters.db.eventsourcing.AggregateRepository
-import com.example.eventsourcing.adapters.db.eventsourcing.EventRepository
 import com.example.eventsourcing.domain.model.Aggregate
 import org.slf4j.Logger
 import java.util.*
@@ -18,14 +18,14 @@ class AggregateStore(
     private val logger: Logger
 ) {
     fun saveAggregate(aggregate: Aggregate): List<EventWithId<Event>> {
-        logger.debug("Saving aggregate {}", aggregate)
         aggregateRepository.createAggregateIfAbsent(aggregate.aggregateType, aggregate.aggregateId)
 
         if (!aggregateRepository.checkAndUpdateAggregateVersion(
                 aggregate.aggregateId,
                 aggregate.baseVersion,
                 aggregate.version
-            )) {
+            )
+        ) {
             logger.warn(
                 "Optimistic concurrency control error in aggregate {} {}: " +
                         "actual version doesn't match expected version {}",
@@ -59,22 +59,16 @@ class AggregateStore(
         aggregateType: AggregateType,
         aggregateId: UUID,
         version: Int? = null
-    ): Aggregate {
-        logger.debug("Reading {} aggregate {}", aggregateType, aggregateId)
-
-        val aggregate: Aggregate = if (properties.getSnapshotting(aggregateType).enabled) {
+    ): Aggregate =
+        if (properties.getSnapshotting(aggregateType).enabled) {
             readAggregateFromSnapshot(aggregateId, version)
                 ?: readAggregateFromEvents(aggregateType, aggregateId, version)
                     .also {
-                        logger.debug("Aggregate {} snapshot not found", aggregateId)
+                        logger.info("Aggregate {} snapshot not found", aggregateId)
                     }
         } else {
             readAggregateFromEvents(aggregateType, aggregateId, version)
         }
-        logger.debug("Read aggregate {}", aggregate)
-
-        return aggregate
-    }
 
     private fun readAggregateFromSnapshot(
         aggregateId: UUID,

@@ -1,6 +1,5 @@
-package com.example.eventsourcing.adapters.db.eventsourcing
+package com.example.eventsourcing.adapters.db.eventsourcing.repository
 
-import com.example.eventsourcing.domain.model.Aggregate
 import com.example.eventsourcing.domain.model.AggregateType
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.postgresql.util.PGobject

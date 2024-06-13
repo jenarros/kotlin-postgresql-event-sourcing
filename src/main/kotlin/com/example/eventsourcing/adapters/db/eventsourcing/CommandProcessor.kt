@@ -1,9 +1,9 @@
-package com.example.eventsourcing.domain.service
+package com.example.eventsourcing.adapters.db.eventsourcing
 
 import com.example.eventsourcing.domain.model.Aggregate
 import com.example.eventsourcing.domain.model.command.Command
-import com.example.eventsourcing.domain.service.command.CommandHandler
-import com.example.eventsourcing.domain.service.command.DefaultCommandHandler
+import com.example.eventsourcing.domain.handlers.CommandHandler
+import com.example.eventsourcing.domain.handlers.DefaultCommandHandler
 import com.example.eventsourcing.adapters.db.eventsourcing.handlers.SyncEventHandler
 import org.slf4j.Logger
 

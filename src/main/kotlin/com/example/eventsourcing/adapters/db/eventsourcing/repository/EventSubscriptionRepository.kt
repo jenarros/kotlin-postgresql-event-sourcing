@@ -1,4 +1,4 @@
-package com.example.eventsourcing.adapters.db.eventsourcing
+package com.example.eventsourcing.adapters.db.eventsourcing.repository
 
 import com.example.eventsourcing.domain.model.event.EventSubscriptionCheckpoint
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate

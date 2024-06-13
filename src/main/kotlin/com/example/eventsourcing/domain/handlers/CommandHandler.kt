@@ -1,4 +1,4 @@
-package com.example.eventsourcing.domain.service.command
+package com.example.eventsourcing.domain.handlers
 
 import com.example.eventsourcing.domain.model.Aggregate
 import com.example.eventsourcing.domain.model.command.Command
