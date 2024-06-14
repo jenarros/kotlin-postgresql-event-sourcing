@@ -1,5 +1,7 @@
+![build](https://github.com/jenarros/kotlin-postgresql-event-sourcing/actions/workflows/build.yaml/badge.svg)
+
 # <a id="0"></a>Event Sourcing with PostgreSQL and Kotlin
-***Note***: This is a fork of [postgresql-event-sourcing](https://github.com/evgeniy-khist/postgresql-event-sourcing) refactored to Kotlin. The original repo may be more up to date.
+***Note***: This project started as a fork of [postgresql-event-sourcing](https://github.com/evgeniy-khist/postgresql-event-sourcing) and it has been heavily refactored to leverage the kotlin ecosystem.
 
 - [Introduction](#1)
 - [Example domain](#2)
@@ -278,7 +280,7 @@ Snapshotting for an aggregate type can be disabled and configured in the `applic
 ```yaml
 event-sourcing:
   snapshotting:
-    # com.example.eventsourcing.domain.AggregateType
+    # com.example.eventsourcing.model.AggregateType
     ORDER:
       enabled: true
       # Create a snapshot on every nth event

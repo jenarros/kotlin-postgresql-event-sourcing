@@ -21,7 +21,11 @@ object TestEnvironment {
         PostgreSQLContainer(DockerImageName.parse("postgres:15-alpine"))
             .withDatabaseName(databaseName)
             .withUsername(databaseUsername)
-            .withPassword(databasePassword).apply { start() }
+            .withPassword(databasePassword).apply {
+                start().also {
+                    System.out.println("Starting postgres on port ${this.firstMappedPort} ")
+                }
+            }
 
     val kafka: KafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1")).also {
         it.start()

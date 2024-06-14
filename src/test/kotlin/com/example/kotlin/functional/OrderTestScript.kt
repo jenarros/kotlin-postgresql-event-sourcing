@@ -1,24 +1,17 @@
 package com.example.kotlin.functional
 
-import com.example.eventsourcing.config.Json
 import com.example.eventsourcing.config.Json.jsonify
 import com.example.eventsourcing.config.Json.objectMapper
 import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
-import com.fasterxml.jackson.core.JsonProcessingException
+import com.example.eventsourcing.config.Kafka.kafkaConsumer
 import org.apache.kafka.clients.consumer.Consumer
-import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.common.serialization.IntegerDeserializer
-import org.apache.kafka.common.serialization.StringDeserializer
 import org.http4k.core.HttpHandler
-import org.http4k.core.Method
-import org.http4k.core.Request
+import org.http4k.core.Response
 import org.slf4j.LoggerFactory
 import strikt.api.expectThat
 import strikt.assertions.isEqualTo
 import strikt.assertions.isTrue
-import strikt.jackson.isTextual
 import strikt.jackson.path
 import strikt.jackson.textValue
 import java.math.BigDecimal
@@ -29,16 +22,17 @@ import java.util.*
 import java.util.stream.StreamSupport
 
 class OrderTestScript(
-    private val httpHandler: HttpHandler,
+    httpHandler: HttpHandler,
     private val kafkaBrokers: String,
     private val integrationKafkaTopic: String = TOPIC_ORDER_EVENTS
 ) {
-    private val riderId: UUID = UUID.fromString("63770803-38f4-4594-aec2-4c74918f7165")
-    private val driverId: UUID = UUID.fromString("2c068a1a-9263-433f-a70b-067d51b98378")
+    private val riderId: UUID = UUID.randomUUID()
+    private val driverId: UUID = UUID.randomUUID()
+    private val api = Api(httpHandler)
 
     fun execute() {
-        createKafkaConsumer(listOf(integrationKafkaTopic)).use { kafkaConsumer ->
-            val orderId = placeNewOrder()
+        kafkaConsumer(kafkaBrokers, listOf(integrationKafkaTopic)).use { kafkaConsumer ->
+            val orderId = placeNewOrder(riderId)
             adjustOrder(orderId)
             acceptTheOrder(orderId)
             completeTheOrder(orderId)
@@ -93,13 +87,13 @@ class OrderTestScript(
 
     private fun completeTheOrder(orderId: UUID) {
         log.info("Complete the order")
-        modifyOrder(
+        api.modifyOrder(
             orderId, """
                     {
                       "status":"COMPLETED"
                     }
                     """
-        )
+        ).expectSuccess()
 
         log.info("Get the completed order")
         getOrder(
@@ -133,14 +127,14 @@ class OrderTestScript(
 
     private fun acceptTheOrder(orderId: UUID) {
         log.info("Accepted the order")
-        modifyOrder(
+        api.modifyOrder(
             orderId, """
                     {
                       "status":"ACCEPTED",
                       "driverId":"$driverId"
                     }
                     """
-        )
+        ).expectSuccess()
 
         log.info("Get the accepted order")
         getOrder(
@@ -177,15 +171,15 @@ class OrderTestScript(
         var price = BigDecimal("100.00")
         for (i in 0..19) {
             price = price.add(BigDecimal("10"))
-            modifyOrder(
+            api.modifyOrder(
                 orderId, """
-                        {
-                          "status":"ADJUSTED",
-                          "price":"%s"
-                        }
-                        
-                        """.format(price)
-            )
+                            {
+                              "status":"ADJUSTED",
+                              "price":"%s"
+                            }
+                            
+                            """.format(price)
+            ).expectSuccess()
         }
 
         log.info("Get the adjusted order")
@@ -215,7 +209,7 @@ class OrderTestScript(
         )
     }
 
-    fun placeNewOrder(riderId: UUID = UUID.fromString("63770803-38f4-4594-aec2-4c74918f7165")): UUID {
+    fun placeNewOrder(riderId: UUID): UUID {
         log.info("Place a new order")
 
         val orderId = placeOrder(
@@ -268,43 +262,24 @@ class OrderTestScript(
     }
 
     private fun placeOrder(body: String): UUID {
-        val response = httpHandler(
-            Request(Method.POST, "/orders")
-                .json()
-                .body(body)
-        )
-        expectThat(response.status.successful)
-            .isTrue()
-        val jsonString = response.bodyString()
-        expectThat(Json.objectMapper.readTree(jsonString))
-            .path("orderId")
-            .isTextual()
+        val response = api.placeOrder(body).expectSuccess()
 
-        return try {
-            val jsonTree = objectMapper.readTree(jsonString)
-            val orderId = jsonTree["orderId"].asText()
-            UUID.fromString(orderId)
-        } catch (e: JsonProcessingException) {
-            throw RuntimeException(e)
-        }
+        return UUID.fromString(objectMapper.readTree(response.bodyString()).path("orderId").textValue())
     }
 
-    private fun modifyOrder(orderId: UUID, body: String) {
-        val response = httpHandler(
-            Request(Method.PUT, "/orders/$orderId")
-                .json()
-                .body(body)
-        )
-        expectThat(response.status.successful)
-            .isTrue()
+    private fun Response.expectSuccess(): Response {
+        expectThat(this.status.successful).isTrue()
+        return this
+    }
+
+    private fun Response.expectBodyToBe(expectedJson: String): Response {
+        expectThat(this.bodyString().jsonify()).isEqualTo(expectedJson.jsonify())
+        return this
     }
 
     private fun modifyOrderError(orderId: UUID, body: String, error: String) {
-        val response = httpHandler(
-            Request(Method.PUT, "/orders/$orderId")
-                .json()
-                .body(body)
-        )
+        val response = api.modifyOrder(orderId, body)
+
         expectThat(response.status.clientError)
             .isTrue()
         val jsonString = response.bodyString()
@@ -314,41 +289,10 @@ class OrderTestScript(
             .isEqualTo(error)
     }
 
-    private fun getOrder(orderId: UUID, expectedJson: String) {
-        val response = httpHandler(
-            Request(Method.GET, "/orders/$orderId")
-                .json()
-        )
-        expectThat(response.status.successful)
-            .isTrue()
-        expectThat(response.bodyString().jsonify()).isEqualTo(expectedJson.jsonify())
-    }
-
-    fun createKafkaConsumer(topicToConsume: String): Consumer<String, String> {
-        return createKafkaConsumer(listOf(topicToConsume))
-    }
-
-    fun createKafkaConsumer(topicsToConsume: List<String>): Consumer<String, String> {
-        val props: MutableMap<String, Any> = HashMap()
-        props[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafkaBrokers
-        props[ConsumerConfig.GROUP_ID_CONFIG] = this.javaClass.simpleName + "-consumer"
-        props[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = "true"
-        props[ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG] = "10"
-        props[ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG] = "60000"
-        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] =
-            IntegerDeserializer::class.java
-        props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] =
-            StringDeserializer::class.java
-        props[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
-
-        return KafkaConsumer(
-            props,
-            StringDeserializer(),
-            StringDeserializer()
-        ).also {
-            it.subscribe(topicsToConsume)
-        }
-    }
+    private fun getOrder(orderId: UUID, expectedJson: String) =
+        api.getOrder(orderId)
+            .expectSuccess()
+            .expectBodyToBe(expectedJson)
 
     fun getKafkaRecords(
         consumer: Consumer<String, String>,
@@ -367,13 +311,9 @@ class OrderTestScript(
             .toList()
     }
 
-    companion object {
-        fun Request.json() =
-            header("content-type", "application/json")
-                .header("accept", "application/json")
+    private fun Clock.now(): Instant = Instant.now(this)
 
+    companion object {
         private val log = LoggerFactory.getLogger(OrderTestScript::class.java)
     }
 }
-
-private fun Clock.now(): Instant = Instant.now(this)

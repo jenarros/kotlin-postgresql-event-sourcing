@@ -4,23 +4,23 @@ import com.example.eventsourcing.config.EventSourcingProperties
 import com.example.eventsourcing.config.IntegrationEventProperties
 import com.example.eventsourcing.config.Json.objectMapper
 import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
-import com.example.eventsourcing.config.Kafka.kafkaClient
+import com.example.eventsourcing.config.Kafka.kafkaProducer
 import com.example.eventsourcing.config.SnapshottingProperties
-import com.example.eventsourcing.controller.ErrorHandler
-import com.example.eventsourcing.controller.OrdersController
+import com.example.eventsourcing.adapters.api.ErrorHandler
+import com.example.eventsourcing.adapters.api.OrdersController
 import com.example.eventsourcing.domain.AggregateType
-import com.example.eventsourcing.projection.OrderProjection
-import com.example.eventsourcing.repository.AggregateRepository
-import com.example.eventsourcing.repository.EventRepository
-import com.example.eventsourcing.repository.EventSubscriptionRepository
-import com.example.eventsourcing.service.AggregateStore
-import com.example.eventsourcing.service.CommandProcessor
-import com.example.eventsourcing.service.EventSubscriptionProcessor
-import com.example.eventsourcing.service.ScheduledEventSubscriptionProcessor
-import com.example.eventsourcing.service.command.DefaultCommandHandler
-import com.example.eventsourcing.service.command.PlaceOrderCommandHandler
-import com.example.eventsourcing.service.event.OrderIntegrationEventSender
-import com.example.eventsourcing.service.event.OrderProjectionUpdater
+import com.example.eventsourcing.adapters.db.projection.OrderProjection
+import com.example.eventsourcing.adapters.db.eventsourcing.repository.AggregateRepository
+import com.example.eventsourcing.adapters.db.eventsourcing.repository.EventRepository
+import com.example.eventsourcing.adapters.db.eventsourcing.repository.EventSubscriptionRepository
+import com.example.eventsourcing.adapters.db.eventsourcing.AggregateStore
+import com.example.eventsourcing.adapters.db.eventsourcing.CommandProcessor
+import com.example.eventsourcing.adapters.db.eventsourcing.EventSubscriptionProcessor
+import com.example.eventsourcing.adapters.db.eventsourcing.ScheduledEventSubscriptionProcessor
+import com.example.eventsourcing.domain.handlers.DefaultCommandHandler
+import com.example.eventsourcing.domain.handlers.PlaceOrderCommandHandler
+import com.example.eventsourcing.adapters.kafka.OrderIntegrationEventSender
+import com.example.eventsourcing.adapters.db.projection.OrderProjectionUpdater
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.GlobalScope
@@ -39,6 +39,7 @@ import org.http4k.routing.path
 import org.http4k.routing.routes
 import org.http4k.server.Undertow
 import org.http4k.server.asServer
+import org.slf4j.LoggerFactory
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean
@@ -55,6 +56,8 @@ fun app(
     hikariConfig: HikariConfig,
     integrationEventProperties: IntegrationEventProperties
 ): RoutingHttpHandler {
+    val logger = LoggerFactory.getLogger("log")
+
     val dataSource = HikariDataSource(hikariConfig).also {
         Flyway.configure()
             .dataSource(it)
@@ -67,7 +70,8 @@ fun app(
     val eventRepository = EventRepository(namedParameterJdbcTemplate, objectMapper)
     val aggregateStore = AggregateStore(
         aggregateRepository, eventRepository,
-        EventSourcingProperties(mapOf(AggregateType.ORDER to snapshottingProperties))
+        EventSourcingProperties(mapOf(AggregateType.ORDER to snapshottingProperties)),
+        logger
     )
     val hibernateProperties = Properties().also {
         it.setProperty("hibernate.physical_naming_strategy", CamelCaseToUnderscoresNamingStrategy::class.java.name)
@@ -90,19 +94,21 @@ fun app(
         aggregateStore,
         listOf(PlaceOrderCommandHandler()),
         DefaultCommandHandler(),
-        listOf(OrderProjectionUpdater(orderProjectionRepository))
+        listOf(OrderProjectionUpdater(orderProjectionRepository, logger)),
+        logger
     )
 
     if (integrationEventProperties.enabled) {
-        val kafkaTemplate = kafkaClient(kafkaBootstrapServers, integrationEventProperties.topic)
+        val kafkaTemplate = kafkaProducer(kafkaBootstrapServers, integrationEventProperties.topic)
         val orderIntegrationEventSender =
-            OrderIntegrationEventSender(aggregateStore, kafkaTemplate, integrationEventProperties.topic, objectMapper)
+            OrderIntegrationEventSender(aggregateStore, kafkaTemplate, integrationEventProperties.topic, objectMapper, logger)
         val eventSubscriptionProcessor =
-            EventSubscriptionProcessor(EventSubscriptionRepository(namedParameterJdbcTemplate), eventRepository)
+            EventSubscriptionProcessor(EventSubscriptionRepository(namedParameterJdbcTemplate), eventRepository, logger)
 
         val scheduledEventSubscriptionProcessor = ScheduledEventSubscriptionProcessor(
             listOf(orderIntegrationEventSender),
-            eventSubscriptionProcessor
+            eventSubscriptionProcessor,
+            logger
         )
 
         GlobalScope.launch {
@@ -118,33 +124,23 @@ fun app(
     return ServerFilters.CatchAll(ErrorHandler)
         .then(
             routes(
-                "/orders" bind Method.GET to { request: Request -> ordersController.orders() },
+                "/orders" bind Method.GET to { request: Request ->
+                    ordersController.orders()
+                },
                 "/orders" bind Method.POST to { request: Request ->
                     ordersController.placeOrder(
-                        objectMapper.readTree(
-                            request.bodyString()
-                        )
+                        objectMapper.readTree(request.bodyString())
                     )
                 },
                 "/orders/{orderId}" bind Method.GET to { request: Request ->
                     ordersController.getOrder(
-                        UUID.fromString(
-                            request.path(
-                                "orderId"
-                            )
-                        )
+                        UUID.fromString(request.path("orderId"))
                     )
                 },
                 "/orders/{orderId}" bind Method.PUT to { request: Request ->
                     ordersController.modifyOrder(
-                        UUID.fromString(
-                            request.path(
-                                "orderId"
-                            )
-                        ),
-                        objectMapper.readTree(
-                            request.bodyString()
-                        )
+                        UUID.fromString(request.path("orderId")),
+                        objectMapper.readTree(request.bodyString())
                     )
                 },
             )
