@@ -8,14 +8,15 @@ io-spring-dependency-management = { id = "io.spring.dependency-management", vers
 
 org-jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 
+org-jetbrains-kotlinx-kover = { id = "org.jetbrains.kotlinx.kover", version = "0.8.1" }
+
 [versions]
 
 forkhandles = "2.18.0.1"
 
-http4k = "5.23.0.0"
+http4k = "4.43.0.0"
 
-kotlinx-coroutines = "1.8.1"
-##              ⬆ = "1.9.0-RC"
+kotlinx-coroutines = "1.7.1"
 
 strikt = "0.34.1"
 
@@ -25,17 +26,15 @@ testcontainers = "1.19.8"
 
 flyway = "10.14.0"
 
-jetbrains-exposed = "0.51.1"
+jetbrains-exposed = "0.40.1"
 
-junit-jupiter = "5.10.2"
-##         ⬆ = "5.11.0-M1"
-##         ⬆ = "5.11.0-M2"
+junit-jupiter = "5.8.2"
 
 [libraries]
 
 spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
 
-org-postgresql-postgresql = "org.postgresql:postgresql:42.7.3"
+org-postgresql-postgresql = "org.postgresql:postgresql:42.5.4"
 
 http4k-bom = { group = "org.http4k", name = "http4k-bom", version.ref = "http4k" }
 
@@ -83,14 +82,16 @@ flyway-core = { group="org.flywaydb", name= "flyway-core", version.ref="flyway"}
 
 flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 
-forkhandles-bom = "dev.forkhandles:forkhandles-bom:2.18.0.1"
+forkhandles-bom = "dev.forkhandles:forkhandles-bom:2.18.0.0"
 
-kafka-clients = "org.apache.kafka:kafka-clients:7.6.1-ccs"
+kafka-clients = "org.apache.kafka:kafka-clients:3.7.0"
 
-connect-runtime = "org.apache.kafka:connect-runtime:7.6.1-ccs"
+connect-runtime = "org.apache.kafka:connect-runtime:2.1.0"
 
-kafka-json-serializer = "io.confluent:kafka-json-serializer:7.6.1"
+kafka-json-serializer = "io.confluent:kafka-json-serializer:5.0.1"
 
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit-jupiter" }
 
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+
+kover-jvm-agent = "org.jetbrains.kotlinx:kover-jvm-agent:0.8.1"

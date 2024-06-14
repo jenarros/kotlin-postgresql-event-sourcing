@@ -19,10 +19,19 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build with Gradle
-        run: ./gradlew build
+        run: ./gradlew build koverXmlReport
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v4
         if: success() || failure() # always run even if the previous step fails
         with:
           report_paths: '**/build/test-results/test/TEST-*.xml'
+
+      - name: Publish Test Report
+        if: success()
+        run: bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r build/reports/kover/report.xml
+        env:
+          CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
+          CODACY_ORGANIZATION_PROVIDER: ${{ secrets.CODACY_ORGANIZATION_PROVIDER }}
+          CODACY_USERNAME: ${{ secrets.CODACY_USERNAME }}
+          CODACY_PROJECT_NAME: ${{ secrets.CODACY_PROJECT_NAME }}
