@@ -1,6 +1,6 @@
 import com.example.eventsourcing.domain.OrderAggregate
 import com.example.eventsourcing.domain.applyChange
-import com.example.eventsourcing.domain.model.Error
+import com.example.eventsourcing.domain.model.InvalidCommandError
 import com.example.eventsourcing.domain.model.OrderStatus
 import com.example.eventsourcing.domain.model.command.*
 import com.example.eventsourcing.domain.model.event.*
@@ -9,7 +9,7 @@ import java.util.*
 
 fun OrderAggregate.process(command: PlaceOrderCommand): OrderAggregate {
     if (status != null) {
-        throw Error("Can't place an order, it's already in status %s", status)
+        throw InvalidCommandError("Can't place an order, it's already in status $status")
     }
     return applyChange(
         OrderPlacedEvent(
@@ -25,7 +25,7 @@ fun OrderAggregate.process(command: PlaceOrderCommand): OrderAggregate {
 
 fun OrderAggregate.process(command: AdjustOrderPriceCommand): OrderAggregate {
     if (!EnumSet.of(OrderStatus.PLACED, OrderStatus.ADJUSTED).contains(status)) {
-        throw Error("Can't adjust the price of an order in status %s", status)
+        throw InvalidCommandError("Can't adjust the price of an order in status $status")
     }
     return applyChange(
         OrderPriceAdjustedEvent(
@@ -39,7 +39,7 @@ fun OrderAggregate.process(command: AdjustOrderPriceCommand): OrderAggregate {
 
 fun OrderAggregate.process(command: AcceptOrderCommand): OrderAggregate {
     if (EnumSet.of(OrderStatus.ACCEPTED, OrderStatus.COMPLETED, OrderStatus.CANCELLED).contains(status)) {
-        throw Error("Can't accept order in status %s", status)
+        throw InvalidCommandError("Can't accept order in status $status")
     }
     return applyChange(
         OrderAcceptedEvent(
@@ -53,7 +53,7 @@ fun OrderAggregate.process(command: AcceptOrderCommand): OrderAggregate {
 
 fun OrderAggregate.process(command: CompleteOrderCommand): OrderAggregate {
     if (status != OrderStatus.ACCEPTED) {
-        throw Error("Order in status %s can't be completed", status)
+        throw InvalidCommandError("Order in status $status can't be completed")
     }
     return applyChange(
         OrderCompletedEvent(
@@ -66,7 +66,7 @@ fun OrderAggregate.process(command: CompleteOrderCommand): OrderAggregate {
 
 fun OrderAggregate.process(command: CancelOrderCommand): OrderAggregate {
     if (!EnumSet.of(OrderStatus.PLACED, OrderStatus.ADJUSTED, OrderStatus.ACCEPTED).contains(status)) {
-        throw Error("Order in status %s can't be cancelled", status)
+        throw InvalidCommandError("Order in status $status can't be cancelled")
     }
     return applyChange(
         OrderCancelledEvent(

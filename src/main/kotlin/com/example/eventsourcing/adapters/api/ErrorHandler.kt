@@ -1,5 +1,6 @@
 package com.example.eventsourcing.adapters.api
 
+import com.example.eventsourcing.domain.model.InvalidCommandError
 import org.http4k.core.Body
 import org.http4k.core.Response
 import org.http4k.core.Status
@@ -15,17 +16,8 @@ object ErrorHandler : (Throwable) -> Response {
     override fun invoke(e: Throwable): Response {
         e.printStackTrace()
         return when (e) {
-            is UnsupportedOperationException -> {
-                when (val cause = e.cause) {
-                    is InvocationTargetException -> Response(Status.BAD_REQUEST)
-                        .with(errorMessageLens of ErrorMessage((cause.targetException.message ?: "").format(e)))
-
-                    else -> {
-                        Response(Status.BAD_REQUEST)
-                            .with(errorMessageLens of ErrorMessage((e.message ?: "").format(e)))
-                    }
-                }
-            }
+            is InvalidCommandError -> Response(Status.BAD_REQUEST)
+                .with(errorMessageLens of ErrorMessage((e.message ?: "").format(e)))
 
             else -> {
                 if (e !is Exception) throw e

@@ -89,8 +89,9 @@ class AggregateStore(
                         events.size, aggregate.version, aggregateId
                     )
                     aggregate.loadFromHistory(events)
+                } else {
+                    aggregate
                 }
-                aggregate
             }
     }
 
@@ -99,7 +100,7 @@ class AggregateStore(
         aggregateId: UUID,
         aggregateVersion: Int? = null
     ): Aggregate {
-        val events = eventRepository.readEvents(aggregateId, null, aggregateVersion)
+        val events = eventRepository.readEvents(aggregateId, aggregateVersion, null)
             .map { it.event }
 
         logger.debug("Read {} events for aggregate {}", events.size, aggregateId)

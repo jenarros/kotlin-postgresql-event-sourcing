@@ -11,7 +11,8 @@ import java.util.*
 data class OrderAggregate(
     override val aggregateId: UUID,
     override val version: Int,
-    override val baseVersion: Int,
+    @JsonIgnore
+    override val baseVersion: Int = version,
     @JsonIgnore
     override val changes: List<Event> = emptyList(),
     var status: OrderStatus? = null,
