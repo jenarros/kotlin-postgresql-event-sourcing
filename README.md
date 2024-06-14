@@ -1,6 +1,6 @@
 ![build](https://github.com/jenarros/kotlin-postgresql-event-sourcing/actions/workflows/build.yaml/badge.svg)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/3c9e10c342054b89acac5e78f4c87941)](https://app.codacy.com/gh/jenarros/kotlin-postgresql-event-sourcing/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
-[![Codacy Badge](https://app.codacy.com/project/badge/Coverage/3c9e10c342054b89acac5e78f4c87941)](https://app.codacy.com/gh/jenarros/kotlin-postgresql-event-sourcing/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/05ce2ccbcb664e7887e851af2cb0a911)](https://app.codacy.com/gh/jenarros/kotlin-postgresql-event-sourcing/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Codacy Badge](https://app.codacy.com/project/badge/Coverage/05ce2ccbcb664e7887e851af2cb0a911)](https://app.codacy.com/gh/jenarros/kotlin-postgresql-event-sourcing/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 # <a id="0"></a>Event Sourcing with PostgreSQL and Kotlin
 ***Note***: This project started as a fork of [postgresql-event-sourcing](https://github.com/evgeniy-khist/postgresql-event-sourcing) and it has been heavily refactored to leverage the kotlin ecosystem.
 
