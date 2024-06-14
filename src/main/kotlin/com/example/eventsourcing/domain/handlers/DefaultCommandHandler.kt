@@ -3,7 +3,7 @@ package com.example.eventsourcing.domain.handlers
 import com.example.eventsourcing.domain.Aggregate
 import com.example.eventsourcing.domain.OrderAggregate
 import com.example.eventsourcing.domain.model.command.*
-import process
+import com.example.eventsourcing.domain.process
 
 class DefaultCommandHandler : CommandHandler<Command> {
     override fun handle(aggregate: Aggregate, command: Command): Aggregate =
