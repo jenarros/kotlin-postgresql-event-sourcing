@@ -8,7 +8,6 @@ import org.http4k.core.with
 import org.http4k.format.Jackson.auto
 import java.io.PrintWriter
 import java.io.StringWriter
-import java.lang.reflect.InvocationTargetException
 
 object ErrorHandler : (Throwable) -> Response {
     private val errorMessageLens = Body.auto<ErrorMessage>().toLens()

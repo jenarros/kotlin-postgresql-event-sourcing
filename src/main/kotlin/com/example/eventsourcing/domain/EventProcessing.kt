@@ -3,8 +3,6 @@ package com.example.eventsourcing.domain
 import com.example.eventsourcing.domain.model.OrderStatus
 import com.example.eventsourcing.domain.model.command.*
 import com.example.eventsourcing.domain.model.event.*
-import process
-import java.lang.reflect.InvocationTargetException
 
 fun OrderAggregate.apply(event: OrderPlacedEvent): OrderAggregate {
     status = OrderStatus.PLACED

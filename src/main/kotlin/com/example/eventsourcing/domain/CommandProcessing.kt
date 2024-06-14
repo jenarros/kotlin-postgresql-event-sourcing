@@ -1,10 +1,9 @@
-import com.example.eventsourcing.domain.OrderAggregate
-import com.example.eventsourcing.domain.applyChange
+package com.example.eventsourcing.domain
+
 import com.example.eventsourcing.domain.model.InvalidCommandError
 import com.example.eventsourcing.domain.model.OrderStatus
 import com.example.eventsourcing.domain.model.command.*
 import com.example.eventsourcing.domain.model.event.*
-import com.example.eventsourcing.domain.nextVersion
 import java.util.*
 
 fun OrderAggregate.process(command: PlaceOrderCommand): OrderAggregate {
